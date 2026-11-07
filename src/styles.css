@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-display: "Newsreader", "Songti SC", "Noto Serif SC", "PMingLiU", serif;
+  --color-bg: #12110f;
+  --color-surface: #1c1a17;
+  --color-surface-2: #26231e;
+  --color-fg: #f4efe6;
+  --color-muted: #a3988b;
+  --color-line: #3a342c;
+  --color-primary: #e25b42;
+  --color-primary-fg: #1a0d0a;
+  --color-moss: #8fbfa8;
+  --color-moss-fg: #10241b;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    text-wrap: pretty;
+  }
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  input, textarea, select {
+    width: 100%;
+    min-height: 2.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-bg);
+    color: var(--color-fg);
+    padding: 0.5rem 0.75rem;
+  }
+  textarea {
+    min-height: 8rem;
+    resize: vertical;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-primary) 40%, transparent);
+    color: var(--color-fg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

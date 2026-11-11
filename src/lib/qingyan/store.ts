@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { frameDemo } from "./frame-demo";
 import { isCorrect, nextWrongState } from "./grade";
 import { applyOps, type OpResult } from "./ops";
 import { seedLibrary } from "./seed";
@@ -32,13 +33,30 @@ function uid(prefix: string): string {
 
 function normalize(lib: Library): Library {
   const base = emptyLibrary();
-  return {
+  const flags = Array.isArray(lib.flags) ? [...lib.flags] : [];
+  const next: Library = {
     ...base,
     ...lib,
     version: 1,
     dailyGoal: lib.dailyGoal || 20,
     resume: lib.resume ?? {},
+    flags,
   };
+  const demo = frameDemo();
+  if (!next.flags.includes("frame-demo")) {
+    next.flags = [...next.flags, "frame-demo"];
+    if (!next.banks.some((bank) => bank.id === "bank_frame")) {
+      next.banks = [...next.banks, demo.bank];
+      next.chapters = [...next.chapters, ...demo.chapters];
+      next.questions = [...next.questions, ...demo.questions];
+    }
+  }
+  next.questions = next.questions.filter((question) => question.id !== "q_fr_hot");
+  const frameBank = next.banks.find((bank) => bank.id === "bank_frame");
+  if (frameBank) frameBank.description = demo.bank.description;
+  const figureChapter = next.chapters.find((chapter) => chapter.id === "bank_frame_2");
+  if (figureChapter?.name === "图、声音和怪题") figureChapter.name = "综合";
+  return next;
 }
 
 export const useQingyan = create<QingyanState>()(

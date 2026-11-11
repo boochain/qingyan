@@ -1,3 +1,4 @@
+import { frameDemo } from "./frame-demo";
 import type { Bank, Chapter, Library, QType, Question } from "./types";
 import { emptyLibrary } from "./types";
 
@@ -469,8 +470,10 @@ const security = bundle({
 
 export function seedLibrary(): Library {
   const lib = emptyLibrary();
-  lib.banks = [network.bank, security.bank];
-  lib.chapters = [...network.chapters, ...security.chapters];
-  lib.questions = [...network.questions, ...security.questions];
+  const demo = frameDemo();
+  lib.banks = [network.bank, security.bank, demo.bank];
+  lib.chapters = [...network.chapters, ...security.chapters, ...demo.chapters];
+  lib.questions = [...network.questions, ...security.questions, ...demo.questions];
+  lib.flags = ["frame-demo"];
   return lib;
 }

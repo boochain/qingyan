@@ -1,0 +1,18 @@
+音效
+Kenney Interface Sounds 1.0
+https://kenney.nl/assets/interface-sounds
+License: CC0 1.0 Universal
+https://creativecommons.org/publicdomain/zero/1.0/
+文件在 kenney/，未改内容。
+
+图标
+game-icons.net，许可 CC BY 3.0
+https://creativecommons.org/licenses/by/3.0/
+作者包括 Lorc、Delapouite、sbed、Carl Olsen。
+此处只把颜色改成白色，路径未改。
+https://game-icons.net
+
+地图
+NASA Blue Marble 2002（Blue_Marble_2002.png）
+https://commons.wikimedia.org/wiki/File:Blue_Marble_2002.png
+公有领域。文件名 earth.png。

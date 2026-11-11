@@ -1,3 +1,4 @@
+import { answerText, gradeFrame } from "./frame";
 import type { Question, WrongState } from "./types";
 
 export function normalizeText(value: string): string {
@@ -5,6 +6,7 @@ export function normalizeText(value: string): string {
 }
 
 export function isCorrect(question: Question, chosen: string[]): boolean {
+  if (question.frame) return gradeFrame(question.frame, chosen).correct;
   if (question.type === "single" || question.type === "judge") {
     return chosen.length === 1 && chosen[0] === question.answer[0];
   }
@@ -23,6 +25,7 @@ export function isCorrect(question: Question, chosen: string[]): boolean {
 }
 
 export function answerLabel(question: Question): string {
+  if (question.frame) return answerText(question.frame);
   if (question.type === "judge") {
     return question.answer[0] === "T" ? "正确" : "错误";
   }

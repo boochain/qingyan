@@ -1,4 +1,5 @@
 import { answerLabel } from "./grade";
+import { canonicalChosen, frameFromUnknown, summarizeExplain, type ItemFrame } from "./frame";
 import type { Bank, Chapter, Library, Paper, QType, Question } from "./types";
 
 export interface OpResult {
@@ -9,7 +10,7 @@ export interface OpResult {
   id?: string;
 }
 
-const TYPES = new Set<QType>(["single", "multi", "judge", "blank", "short"]);
+const TYPES = new Set<QType>(["single", "multi", "judge", "blank", "short", "frame"]);
 
 function uid(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-3)}`;
@@ -72,7 +73,7 @@ function tagsOf(value: unknown): string[] {
   }
   if (typeof value === "string") {
     return value
-      .split(/[,，、]/)
+      .split(/[,，、|]/)
       .map((item) => item.trim())
       .filter(Boolean)
       .slice(0, 12);
@@ -81,10 +82,21 @@ function tagsOf(value: unknown): string[] {
 }
 
 function difficultyOf(value: unknown): 1 | 2 | 3 {
-  const n = Number(value ?? 2);
+  if (value == null || value === "") return 2;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 2;
   if (n <= 1) return 1;
   if (n >= 3) return 3;
   return 2;
+}
+
+function letterTokens(list: string[]): string[] {
+  return list.flatMap((item) => {
+    const token = item.trim().replace(/[.、．)]$/u, "");
+    if (/^[A-Ha-h]{2,8}$/.test(token)) return token.split("");
+    if (/^[A-Ha-h](?:\s+[A-Ha-h]){1,7}$/.test(token)) return token.split(/\s+/);
+    return [token || item.trim()];
+  });
 }
 
 function inferType(rawType: unknown, rawChoices: unknown, rawAnswer: unknown): QType {
@@ -105,14 +117,17 @@ function inferType(rawType: unknown, rawChoices: unknown, rawAnswer: unknown): Q
     short: "short",
     简答: "short",
     简答题: "short",
+    frame: "frame",
+    框架: "frame",
+    框架题: "frame",
   };
   if (label && map[label]) return map[label];
   if (label && TYPES.has(label as QType)) return label as QType;
-  const choiceCount = Array.isArray(rawChoices) ? rawChoices.length : 0;
+  const choiceCount = Array.isArray(rawChoices) ? rawChoices.filter((item) => String(item ?? "").trim()).length : 0;
   const answerText = Array.isArray(rawAnswer) ? rawAnswer.join(",") : String(rawAnswer ?? "");
-  if (/对|错|正确|错误|true|false/i.test(answerText) && choiceCount === 0) return "judge";
+  if (/^(对|错|正确|错误|true|false|yes|no|√|×)$/i.test(answerText.trim()) && choiceCount === 0) return "judge";
   if (choiceCount === 0) return answerText.length > 12 ? "short" : "blank";
-  const parts = answerText.split(/[,，、|/]/).filter((item) => item.trim());
+  const parts = letterTokens(answerList(rawAnswer));
   return parts.length > 1 ? "multi" : "single";
 }
 
@@ -128,7 +143,9 @@ function normalizeChoices(type: QType, raw: unknown): { id: string; text: string
   return raw.slice(0, 8).map((item, index) => {
     const id = String.fromCharCode(97 + index);
     if (typeof item === "string") {
-      return { id, text: item.replace(/^[A-Ha-h][.、．)\s]+/, "").trim() };
+      const text = item.replace(/^[A-Ha-h][.、．)\s]+/, "").trim();
+      if (!text) throw new Error("选项要按 A、B、C 连续填写，中间不能留空");
+      return { id, text };
     }
     const record = asRecord(item, "选项");
     return {
@@ -149,10 +166,10 @@ function answerList(raw: unknown): string[] {
 }
 
 function normalizeAnswer(type: QType, raw: unknown, choices: { id: string; text: string }[]): string[] {
-  const list = answerList(raw);
+  const list = type === "single" || type === "multi" ? letterTokens(answerList(raw)) : answerList(raw);
   if (!list.length) throw new Error("缺少答案");
   if (type === "judge") {
-    const value = list[0]!.toLowerCase();
+    const value = list[0]!.toLowerCase().replace(/[.、．)]$/u, "");
     if (["t", "true", "对", "正确", "是", "√", "y", "yes"].includes(value)) return ["T"];
     if (["f", "false", "错", "错误", "否", "×", "n", "no"].includes(value)) return ["F"];
     throw new Error("判断题答案用 对 或 错");
@@ -190,18 +207,54 @@ function ensureChapter(lib: Library, bank: Bank, name: string): Chapter {
   return chapter;
 }
 
+function readFrame(raw: Record<string, unknown>): ItemFrame | undefined {
+  if (!("frame" in raw) || raw.frame == null || raw.frame === "") return undefined;
+  const frame = frameFromUnknown(raw.frame);
+  if (typeof raw.type === "string") {
+    const label = raw.type.trim();
+    if (label && !["frame", "框架", "框架题", "single", "multi", "judge", "blank", "short"].includes(label)) {
+      frame.typeName = label;
+    }
+  }
+  return frame;
+}
+
 function upsertQuestion(lib: Library, raw: Record<string, unknown>, at: string): Question {
-  const bank = ensureBank(lib, raw.bank ?? raw.bankId ?? raw.bankName, at);
-  const type = inferType(raw.type, raw.choices ?? raw.options, raw.answer);
-  const choices = normalizeChoices(type, raw.choices ?? raw.options);
-  const answer = normalizeAnswer(type, raw.answer, choices);
-  const stem = text(raw.stem ?? raw.question ?? raw.title, "题干").slice(0, 4000);
+  const bankRef = raw.bank ?? raw.bankId ?? raw.bankName;
+  const created = typeof bankRef === "string" && !findBank(lib, bankRef);
+  const bank = ensureBank(lib, bankRef, at);
+  const subject = optionalText(raw.subject);
+  if (subject && (created || bank.subject === "未分类")) bank.subject = subject;
   const chapterName = optionalText(raw.chapter ?? raw.chapterName) ?? "未分章";
   const chapter = ensureChapter(lib, bank, chapterName);
   const givenId = optionalText(raw.id);
+  const stemHint = optionalText(raw.stem ?? raw.question ?? raw.title);
   const existing =
     lib.questions.find((question) => question.id === givenId) ??
-    lib.questions.find((question) => question.bankId === bank.id && question.stem === stem);
+    (stemHint ? lib.questions.find((question) => question.bankId === bank.id && question.stem === stemHint) : undefined);
+  const explicitFrame = "frame" in raw;
+  const parsedFrame = explicitFrame ? readFrame(raw) : undefined;
+  const keepFrame = !explicitFrame && existing?.frame && (raw.type === undefined || raw.type === "frame" || raw.type === "框架" || raw.type === "框架题")
+    ? existing.frame
+    : undefined;
+  const frame = parsedFrame ?? keepFrame;
+  const stem = (stemHint || frame?.stem.split("\n")[0] || frame?.typeName || "").slice(0, 4000);
+  if (!stem) throw new Error("题干不能为空");
+  let type: QType;
+  let choices: Question["choices"];
+  let answer: string[];
+  if (frame) {
+    type = "frame";
+    choices = [];
+    answer = canonicalChosen(frame);
+  } else {
+    type = inferType(raw.type, raw.choices ?? raw.options, raw.answer);
+    if (type === "frame") throw new Error("框架题要在 frame 里写上 @frame … @end");
+    choices = normalizeChoices(type, raw.choices ?? raw.options);
+    answer = normalizeAnswer(type, raw.answer, choices);
+  }
+  const writtenExplanation = optionalText(raw.explanation ?? raw.explain);
+  const explanation = writtenExplanation ?? (frame ? summarizeExplain(frame) : existing?.explanation ?? "");
   const question: Question = {
     id: existing?.id ?? givenId ?? uid("q"),
     bankId: bank.id,
@@ -210,10 +263,11 @@ function upsertQuestion(lib: Library, raw: Record<string, unknown>, at: string):
     stem,
     choices,
     answer,
-    explanation: optionalText(raw.explanation ?? raw.explain) ?? existing?.explanation ?? "",
+    explanation,
     difficulty: difficultyOf(raw.difficulty ?? raw.hard ?? existing?.difficulty),
     tags: raw.tags === undefined && existing ? existing.tags : tagsOf(raw.tags),
     source: optionalText(raw.source) ?? existing?.source ?? "agent",
+    frame,
   };
   if (existing) {
     const index = lib.questions.findIndex((item) => item.id === existing.id);
@@ -266,8 +320,12 @@ function applyOne(lib: Library, raw: unknown, index: number, at: string): OpResu
   }
   if (op === "bank.update") {
     const bank = requireBank(lib, record.id ?? record.bank ?? record.name);
-    if (optionalText(record.name)) bank.name = optionalText(record.name)!;
-    if (typeof record.subject === "string") bank.subject = record.subject.trim() || bank.subject;
+    const nextName = optionalText(record.name);
+    if (nextName && nextName !== bank.name) {
+      if (lib.banks.some((item) => item.name === nextName)) throw new Error(`题库「${nextName}」已存在`);
+      bank.name = nextName;
+    }
+    if (typeof record.subject === "string") bank.subject = record.subject.trim() || "未分类";
     if (typeof record.description === "string") bank.description = record.description.trim();
     bank.updatedAt = at;
     return { index, op, ok: true, message: `已更新题库 ${bank.name}`, id: bank.id };
@@ -291,6 +349,41 @@ function applyOne(lib: Library, raw: unknown, index: number, at: string): OpResu
     if (typeof record.order === "number") chapter.order = record.order;
     touch(lib, bank.id, at);
     return { index, op, ok: true, message: `章节 ${name}`, id: chapter.id };
+  }
+  if (op === "chapter.rename") {
+    const bank = requireBank(lib, record.bank ?? record.bankId);
+    const from = text(record.from ?? record.chapter ?? record.id, "章节");
+    const to = text(record.to ?? record.name, "新章节名");
+    const chapter = lib.chapters.find((item) => item.bankId === bank.id && (item.id === from || item.name === from));
+    if (!chapter) throw new Error(`找不到章节「${from}」`);
+    if (chapter.name !== to && lib.chapters.some((item) => item.bankId === bank.id && item.name === to)) {
+      throw new Error(`章节「${to}」已存在`);
+    }
+    chapter.name = to;
+    touch(lib, bank.id, at);
+    return { index, op, ok: true, message: `章节已改为 ${to}`, id: chapter.id };
+  }
+  if (op === "chapter.delete") {
+    const bank = requireBank(lib, record.bank ?? record.bankId);
+    const ref = text(record.chapter ?? record.name ?? record.id, "章节");
+    const chapter = lib.chapters.find((item) => item.bankId === bank.id && (item.id === ref || item.name === ref));
+    if (!chapter) throw new Error(`找不到章节「${ref}」`);
+    const left = lib.questions.filter((question) => question.chapterId === chapter.id);
+    if (left.length && chapter.name === "未分章") throw new Error("未分章里还有题目，请先删掉或改到别的章节");
+    if (left.length) {
+      const sink = ensureChapter(lib, bank, "未分章");
+      if (sink.id === chapter.id) throw new Error("未分章里还有题目，请先删掉或改到别的章节");
+      for (const question of left) question.chapterId = sink.id;
+    }
+    lib.chapters = lib.chapters.filter((item) => item.id !== chapter.id);
+    touch(lib, bank.id, at);
+    return {
+      index,
+      op,
+      ok: true,
+      message: left.length ? `已删除章节，${left.length} 题改到未分章` : "已删除空章节",
+      id: chapter.id,
+    };
   }
   if (op === "question.upsert") {
     const question = upsertQuestion(lib, record, at);

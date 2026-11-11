@@ -16,13 +16,14 @@ export function orderedQuestions(lib: Library, bankId: string) {
     .filter((chapter) => chapter.bankId === bankId)
     .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, "zh"));
   const rank = new Map(chapters.map((chapter, index) => [chapter.id, index]));
+  const written = new Map(lib.questions.map((question, index) => [question.id, index]));
   return lib.questions
     .filter((question) => question.bankId === bankId)
     .slice()
     .sort(
       (a, b) =>
         (rank.get(a.chapterId) ?? 99) - (rank.get(b.chapterId) ?? 99) ||
-        a.id.localeCompare(b.id),
+        (written.get(a.id) ?? 0) - (written.get(b.id) ?? 0),
     );
 }
 

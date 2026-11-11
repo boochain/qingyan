@@ -5,6 +5,8 @@ node_modules
 dist
 screenshots
 .grok
+artifacts
+.tanstack
 *.log
 .env
 .env.*

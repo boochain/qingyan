@@ -16,9 +16,13 @@ import { Route as PapersRouteImport } from './routes/papers'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as WrongsRouteImport } from './routes/wrongs'
 import { Route as ApiQingyanRouteImport } from './routes/api/qingyan'
+import { Route as BanksIndexRouteImport } from './routes/banks.index'
 import { Route as BanksBankIdRouteImport } from './routes/banks.$bankId'
+import { Route as PapersIndexRouteImport } from './routes/papers.index'
 import { Route as PapersPaperIdRouteImport } from './routes/papers.$paperId'
 import { Route as PracticeBankIdRouteImport } from './routes/practice.$bankId'
+import { Route as BanksBankIdIndexRouteImport } from './routes/banks.$bankId.index'
+import { Route as BanksBankIdEditRouteImport } from './routes/banks.$bankId.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -55,10 +59,20 @@ const ApiQingyanRoute = ApiQingyanRouteImport.update({
   path: '/api/qingyan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BanksIndexRoute = BanksIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BanksRoute,
+} as any)
 const BanksBankIdRoute = BanksBankIdRouteImport.update({
   id: '/$bankId',
   path: '/$bankId',
   getParentRoute: () => BanksRoute,
+} as any)
+const PapersIndexRoute = PapersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PapersRoute,
 } as any)
 const PapersPaperIdRoute = PapersPaperIdRouteImport.update({
   id: '/$paperId',
@@ -70,6 +84,16 @@ const PracticeBankIdRoute = PracticeBankIdRouteImport.update({
   path: '/practice/$bankId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BanksBankIdIndexRoute = BanksBankIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BanksBankIdRoute,
+} as any)
+const BanksBankIdEditRoute = BanksBankIdEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => BanksBankIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -79,21 +103,26 @@ export interface FileRoutesByFullPath {
   '/stats': typeof StatsRoute
   '/wrongs': typeof WrongsRoute
   '/api/qingyan': typeof ApiQingyanRoute
-  '/banks/$bankId': typeof BanksBankIdRoute
+  '/banks/$bankId': typeof BanksBankIdRouteWithChildren
   '/papers/$paperId': typeof PapersPaperIdRoute
   '/practice/$bankId': typeof PracticeBankIdRoute
+  '/banks/': typeof BanksIndexRoute
+  '/papers/': typeof PapersIndexRoute
+  '/banks/$bankId/edit': typeof BanksBankIdEditRoute
+  '/banks/$bankId/': typeof BanksBankIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
-  '/banks': typeof BanksRouteWithChildren
-  '/papers': typeof PapersRouteWithChildren
   '/stats': typeof StatsRoute
   '/wrongs': typeof WrongsRoute
   '/api/qingyan': typeof ApiQingyanRoute
-  '/banks/$bankId': typeof BanksBankIdRoute
   '/papers/$paperId': typeof PapersPaperIdRoute
   '/practice/$bankId': typeof PracticeBankIdRoute
+  '/banks': typeof BanksIndexRoute
+  '/papers': typeof PapersIndexRoute
+  '/banks/$bankId/edit': typeof BanksBankIdEditRoute
+  '/banks/$bankId': typeof BanksBankIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -104,9 +133,13 @@ export interface FileRoutesById {
   '/stats': typeof StatsRoute
   '/wrongs': typeof WrongsRoute
   '/api/qingyan': typeof ApiQingyanRoute
-  '/banks/$bankId': typeof BanksBankIdRoute
+  '/banks/$bankId': typeof BanksBankIdRouteWithChildren
   '/papers/$paperId': typeof PapersPaperIdRoute
   '/practice/$bankId': typeof PracticeBankIdRoute
+  '/banks/': typeof BanksIndexRoute
+  '/papers/': typeof PapersIndexRoute
+  '/banks/$bankId/edit': typeof BanksBankIdEditRoute
+  '/banks/$bankId/': typeof BanksBankIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,18 +154,23 @@ export interface FileRouteTypes {
     | '/banks/$bankId'
     | '/papers/$paperId'
     | '/practice/$bankId'
+    | '/banks/'
+    | '/papers/'
+    | '/banks/$bankId/edit'
+    | '/banks/$bankId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/agent'
-    | '/banks'
-    | '/papers'
     | '/stats'
     | '/wrongs'
     | '/api/qingyan'
-    | '/banks/$bankId'
     | '/papers/$paperId'
     | '/practice/$bankId'
+    | '/banks'
+    | '/papers'
+    | '/banks/$bankId/edit'
+    | '/banks/$bankId'
   id:
     | '__root__'
     | '/'
@@ -145,6 +183,10 @@ export interface FileRouteTypes {
     | '/banks/$bankId'
     | '/papers/$paperId'
     | '/practice/$bankId'
+    | '/banks/'
+    | '/papers/'
+    | '/banks/$bankId/edit'
+    | '/banks/$bankId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -209,12 +251,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiQingyanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/banks/': {
+      id: '/banks/'
+      path: '/'
+      fullPath: '/banks/'
+      preLoaderRoute: typeof BanksIndexRouteImport
+      parentRoute: typeof BanksRoute
+    }
     '/banks/$bankId': {
       id: '/banks/$bankId'
       path: '/$bankId'
       fullPath: '/banks/$bankId'
       preLoaderRoute: typeof BanksBankIdRouteImport
       parentRoute: typeof BanksRoute
+    }
+    '/papers/': {
+      id: '/papers/'
+      path: '/'
+      fullPath: '/papers/'
+      preLoaderRoute: typeof PapersIndexRouteImport
+      parentRoute: typeof PapersRoute
     }
     '/papers/$paperId': {
       id: '/papers/$paperId'
@@ -230,25 +286,57 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PracticeBankIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/banks/$bankId/': {
+      id: '/banks/$bankId/'
+      path: '/'
+      fullPath: '/banks/$bankId/'
+      preLoaderRoute: typeof BanksBankIdIndexRouteImport
+      parentRoute: typeof BanksBankIdRoute
+    }
+    '/banks/$bankId/edit': {
+      id: '/banks/$bankId/edit'
+      path: '/edit'
+      fullPath: '/banks/$bankId/edit'
+      preLoaderRoute: typeof BanksBankIdEditRouteImport
+      parentRoute: typeof BanksBankIdRoute
+    }
   }
 }
 
+interface BanksBankIdRouteChildren {
+  BanksBankIdEditRoute: typeof BanksBankIdEditRoute
+  BanksBankIdIndexRoute: typeof BanksBankIdIndexRoute
+}
+
+const BanksBankIdRouteChildren: BanksBankIdRouteChildren = {
+  BanksBankIdEditRoute: BanksBankIdEditRoute,
+  BanksBankIdIndexRoute: BanksBankIdIndexRoute,
+}
+
+const BanksBankIdRouteWithChildren = BanksBankIdRoute._addFileChildren(
+  BanksBankIdRouteChildren,
+)
+
 interface BanksRouteChildren {
-  BanksBankIdRoute: typeof BanksBankIdRoute
+  BanksBankIdRoute: typeof BanksBankIdRouteWithChildren
+  BanksIndexRoute: typeof BanksIndexRoute
 }
 
 const BanksRouteChildren: BanksRouteChildren = {
-  BanksBankIdRoute: BanksBankIdRoute,
+  BanksBankIdRoute: BanksBankIdRouteWithChildren,
+  BanksIndexRoute: BanksIndexRoute,
 }
 
 const BanksRouteWithChildren = BanksRoute._addFileChildren(BanksRouteChildren)
 
 interface PapersRouteChildren {
   PapersPaperIdRoute: typeof PapersPaperIdRoute
+  PapersIndexRoute: typeof PapersIndexRoute
 }
 
 const PapersRouteChildren: PapersRouteChildren = {
   PapersPaperIdRoute: PapersPaperIdRoute,
+  PapersIndexRoute: PapersIndexRoute,
 }
 
 const PapersRouteWithChildren =

@@ -4,15 +4,15 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors duration-200 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+  "inline-flex items-center justify-center gap-2 rounded-full text-sm font-semibold transition duration-200 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
   {
     variants: {
       variant: {
-        primary: "bg-primary text-primary-fg hover:bg-primary/90",
-        moss: "bg-moss text-moss-fg hover:bg-moss/90",
-        surface: "border border-line bg-surface-2 text-fg hover:border-muted",
-        ghost: "bg-transparent text-fg hover:bg-surface-2",
-        danger: "border border-primary/50 bg-transparent text-primary hover:bg-primary/10",
+        primary: "gloss gloss-blue",
+        moss: "gloss gloss-green",
+        surface: "gloss gloss-glass",
+        ghost: "bg-transparent text-fg hover:bg-white/35",
+        danger: "border border-danger/40 bg-white/25 text-danger hover:bg-danger/10",
       },
       size: {
         md: "min-h-11 px-4",

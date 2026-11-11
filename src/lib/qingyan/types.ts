@@ -1,4 +1,6 @@
-export type QType = "single" | "multi" | "judge" | "blank" | "short";
+import type { ItemFrame } from "./frame";
+
+export type QType = "single" | "multi" | "judge" | "blank" | "short" | "frame";
 
 export type PracticeMode =
   | "order"
@@ -42,6 +44,7 @@ export interface Question {
   difficulty: 1 | 2 | 3;
   tags: string[];
   source: string;
+  frame?: ItemFrame;
 }
 
 export interface Attempt {
@@ -112,6 +115,7 @@ export interface Library {
   exams: ExamResult[];
   resume: Record<string, Resume>;
   dailyGoal: number;
+  flags: string[];
 }
 
 export const TYPE_LABEL: Record<QType, string> = {
@@ -120,6 +124,7 @@ export const TYPE_LABEL: Record<QType, string> = {
   judge: "判断",
   blank: "填空",
   short: "简答",
+  frame: "框架",
 };
 
 export const MODE_LABEL: Record<PracticeMode, string> = {
@@ -146,5 +151,10 @@ export function emptyLibrary(): Library {
     exams: [],
     resume: {},
     dailyGoal: 20,
+    flags: [],
   };
+}
+
+export function typeLabelOf(question: { type: QType; frame?: { typeName?: string } | null }): string {
+  return question.frame?.typeName || TYPE_LABEL[question.type];
 }

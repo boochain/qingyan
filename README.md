@@ -22,10 +22,27 @@ curl -s -X POST https://你的域名/api/qingyan \
 
 ## 本地运行
 
+浏览器开发：
+
 ```bash
 npm install
 npm run dev
 ```
+
+### Windows、Linux 上的桌面版
+
+发行页里的压缩包解开就能运行，不需要先装 Node。Windows 包没有签名，系统第一次打开可能会多问一次。程序只在本机起一个窗口，题库仍写在这台电脑里，不上传。
+
+自己打包：
+
+```bash
+npm run build:desktop
+cd desktop && npm install && npx electron-builder --win zip --linux tar.gz
+```
+
+### Android、iPad、手机
+
+用系统浏览器打开青砚，选「安装应用」或「添加到主屏幕」。装上之后从图标进，题目留在这台设备上。这里没有单独的 APK：没有 Android 构建环境时不会假装做出安装包。
 
 ## 许可
 

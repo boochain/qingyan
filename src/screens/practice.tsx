@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { QuestionView } from "@/components/question-view";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { explainMiss } from "@/lib/qingyan/ai";
@@ -60,10 +60,21 @@ function Session({
   const [verdict, setVerdict] = useState<"ok" | "bad" | null>(null);
   const [streak, setStreak] = useState(0);
   const [muted, setMuted] = useState(false);
+  const lockRef = useRef(false);
+  const gradeRef = useRef<(override?: string[]) => void>(() => undefined);
+  const goRef = useRef<(step: number) => void>(() => undefined);
 
-  const ids = session.ids.filter((id) => lib.questions.some((question) => question.id === id));
+  const ids = session.ids.filter((id) => lib.questions.some((item) => item.id === id));
   const finished = session.index >= ids.length;
   const question = ids[session.index] ? lib.questions.find((item) => item.id === ids[session.index]) : undefined;
+  const chosenRef = useRef(chosen);
+  const phaseRef = useRef(phase);
+  const questionRef = useRef(question);
+  const modeRef = useRef(mode);
+  chosenRef.current = chosen;
+  phaseRef.current = phase;
+  questionRef.current = question;
+  modeRef.current = mode;
 
   useEffect(() => {
     let alive = true;
@@ -95,6 +106,7 @@ function Session({
   }, []);
 
   useEffect(() => {
+    lockRef.current = false;
     const saved = useQingyan.getState().lib.notes.find((item) => item.questionId === question?.id);
     setNoteText(saved?.text ?? "");
     setAi("");
@@ -105,35 +117,39 @@ function Session({
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (!question || event.metaKey || event.ctrlKey || event.altKey) return;
+      const current = questionRef.current;
+      const phaseNow = phaseRef.current;
+      if (!current || event.metaKey || event.ctrlKey || event.altKey) return;
       if (document.body.dataset.canvas) return;
       const target = event.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT")) return;
-      if (mode === "recite") return;
-      const ids = selectableOptionIds(question.frame, question.choices.map((choice) => choice.id), question.type);
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)) return;
+      if (modeRef.current === "recite") return;
+      const optionIds = selectableOptionIds(current.frame, current.choices.map((choice) => choice.id), current.type);
       const index = Number(event.key) - 1;
-      if (ids && index >= 0 && index < ids.length && phase === "answer") {
+      if (optionIds && index >= 0 && index < optionIds.length && phaseNow === "answer") {
         unlockSfx();
-        const id = ids[index]!;
-        const many = question.frame ? question.frame.interaction === "choice" && question.frame.select === "many" : question.type === "multi";
+        const id = optionIds[index]!;
+        const many = current.frame ? current.frame.interaction === "choice" && current.frame.select === "many" : current.type === "multi";
         if (many) {
-          setChosen((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+          setChosen((picked) => (picked.includes(id) ? picked.filter((item) => item !== id) : [...picked, id]));
         } else setChosen([id]);
         playSfx("tap");
       }
       if (event.key === "Enter") {
         event.preventDefault();
-        if (phase === "answer") {
-          if (chosen.join("").trim()) grade();
-        } else go(1);
+        if (phaseNow === "answer") {
+          if (chosenRef.current.join("").trim()) gradeRef.current();
+        } else goRef.current(1);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, []);
 
   function grade(override?: string[]) {
     if (!question) return;
+    if (mode !== "recite" && (phase !== "answer" || lockRef.current)) return;
+    if (mode !== "recite") lockRef.current = true;
     const answer = override ?? chosen;
     const correct = recordAnswer(question.id, answer, mode);
     setLog((current) => [...current, { id: question.id, correct }]);
@@ -142,6 +158,7 @@ function Session({
     setStreak((current) => (correct ? current + 1 : 0));
     setPhase("reveal");
   }
+  gradeRef.current = grade;
 
   function go(step: number) {
     if (step > 0) playSfx("next");
@@ -150,6 +167,7 @@ function Session({
       index: Math.min(ids.length, Math.max(0, current.index + step)),
     }));
   }
+  goRef.current = go;
 
   function restart() {
     const next = { ids: buildQueue(useQingyan.getState().lib, bankId, mode, chapter), index: 0 };

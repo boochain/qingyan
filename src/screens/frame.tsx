@@ -27,7 +27,7 @@ export function Screen({
   children: ReactNode;
 }) {
   return (
-    <div className={wide ? "mx-auto flex w-full max-w-6xl flex-col gap-5" : "mx-auto flex w-full max-w-4xl flex-col gap-5"}>
+    <div className={wide ? "rise mx-auto flex w-full max-w-6xl flex-col gap-5" : "rise mx-auto flex w-full max-w-4xl flex-col gap-5"}>
       <header className="flex flex-col gap-3 pad:flex-row pad:items-end pad:justify-between">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">{title}</h1>

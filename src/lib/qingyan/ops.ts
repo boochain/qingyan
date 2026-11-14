@@ -34,6 +34,12 @@ function optionalText(value: unknown): string | undefined {
   return trimmed || undefined;
 }
 
+function clampInt(value: unknown, fallback: number, min: number, max: number): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(parsed)));
+}
+
 function opName(raw: unknown): string {
   if (raw && typeof raw === "object" && "op" in raw && typeof raw.op === "string") return raw.op;
   return "unknown";
@@ -479,7 +485,7 @@ function applyOne(lib: Library, raw: unknown, index: number, at: string): OpResu
         const found = lib.chapters.find((item) => item.bankId === bank.id && (item.id === chapter || item.name === chapter));
         if (found) pool = pool.filter((q) => q.chapterId === found.id);
       }
-      const count = Math.min(100, Math.max(1, Number(record.count ?? 10)));
+      const count = clampInt(record.count ?? 10, 10, 1, 100);
       ids = sampleIds(pool.map((q) => q.id), count);
     }
     if (!ids.length) throw new Error("没有可抽的题目");
@@ -488,7 +494,7 @@ function applyOne(lib: Library, raw: unknown, index: number, at: string): OpResu
       name,
       bankId: bank?.id ?? null,
       questionIds: ids,
-      durationMin: Math.min(240, Math.max(1, Number(record.durationMin ?? 20))),
+      durationMin: clampInt(record.durationMin ?? 20, 20, 1, 240),
       createdAt: at,
     };
     lib.papers.unshift(paper);

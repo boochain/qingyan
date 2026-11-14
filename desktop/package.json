@@ -1,0 +1,44 @@
+{
+  "name": "qingyan",
+  "productName": "青砚",
+  "version": "0.8.0",
+  "private": true,
+  "description": "青砚本地刷题。题目仍只存在这台电脑上。",
+  "author": "Boochain",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron ."
+  },
+  "build": {
+    "appId": "online.one86.qingyan",
+    "productName": "青砚",
+    "directories": {
+      "output": "../release"
+    },
+    "files": [
+      "main.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../.output",
+        "to": "app/.output"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "zip"
+      ]
+    },
+    "linux": {
+      "target": [
+        "tar.gz"
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.3.2",
+    "electron-builder": "^26.18.0"
+  }
+}

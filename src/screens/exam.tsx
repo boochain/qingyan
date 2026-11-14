@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { QuestionView } from "@/components/question-view";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { isCorrect } from "@/lib/qingyan/grade";
 import { useQingyan } from "@/lib/qingyan/store";
 import type { ExamResult } from "@/lib/qingyan/types";
+import { useLibraryReady } from "@/screens/frame";
 import { cn } from "@/lib/utils";
 
 function clock(total: number) {
@@ -15,64 +16,54 @@ function clock(total: number) {
 }
 
 export function ExamScreen({ paperId }: { paperId: string }) {
+  const readyLib = useLibraryReady();
   const lib = useQingyan((state) => state.lib);
   const recordAnswer = useQingyan((state) => state.recordAnswer);
   const paper = lib.papers.find((item) => item.id === paperId);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
-  const [left, setLeft] = useState(() => (paper?.durationMin ?? 20) * 60);
+  const [left, setLeft] = useState(0);
+  const [clockReady, setClockReady] = useState(false);
   const [result, setResult] = useState<ExamResult | null>(null);
-  const submitted = useRef(false);
-
-  useEffect(() => {
-    if (!paper) return;
-    const raw = sessionStorage.getItem(`qingyan-exam:${paper.id}`);
-    if (!raw) return;
-    try {
-      const saved = JSON.parse(raw) as { answers?: Record<string, string[]>; left?: number };
-      if (saved.answers) setAnswers(saved.answers);
-      if (typeof saved.left === "number") setLeft(saved.left);
-    } catch {
-      sessionStorage.removeItem(`qingyan-exam:${paper.id}`);
-    }
-  }, [paper]);
-
-  useEffect(() => {
-    if (!paper || result) return;
-    sessionStorage.setItem(`qingyan-exam:${paper.id}`, JSON.stringify({ answers, left }));
-  }, [answers, left, paper, result]);
-
-  useEffect(() => {
-    if (result) return;
-    const timer = window.setInterval(() => setLeft((value) => (value > 0 ? value - 1 : 0)), 1000);
-    return () => window.clearInterval(timer);
-  }, [result]);
-
-  useEffect(() => {
-    if (left === 0 && paper && !result) submit();
-    // submit identity changes every render; the guard is result/left.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [left]);
-
-  if (!paper) {
-    return (
-      <div className="mx-auto w-full max-w-3xl">
-        <h1 className="text-lg font-semibold">没有这份试卷</h1>
-        <Link to="/papers" className={cn(buttonVariants({ variant: "surface" }), "mt-4")}>
-          回试卷
-        </Link>
-      </div>
-    );
-  }
-
-  const questions = paper.questionIds
+  const [handed, setHanded] = useState(false);
+  const questions = (paper?.questionIds ?? [])
     .map((id) => lib.questions.find((question) => question.id === id))
     .filter((question) => question !== undefined);
-  const current = questions[index];
+
+  useEffect(() => {
+    if (!readyLib || !paper) return;
+    const raw = sessionStorage.getItem(`qingyan-exam:${paper.id}`);
+    const minutes = Number.isFinite(paper.durationMin) ? paper.durationMin : 20;
+    let nextLeft = minutes * 60;
+    if (raw) {
+      try {
+        const saved = JSON.parse(raw) as { answers?: Record<string, string[]>; left?: number };
+        if (saved.answers && typeof saved.answers === "object") setAnswers(saved.answers);
+        if (typeof saved.left === "number" && Number.isFinite(saved.left)) nextLeft = saved.left;
+      } catch {
+        sessionStorage.removeItem(`qingyan-exam:${paper.id}`);
+      }
+    }
+    setLeft(Math.max(0, Math.round(Number.isFinite(nextLeft) ? nextLeft : minutes * 60)));
+    setClockReady(true);
+    // paper identity changes whenever the library changes; only the id and length matter here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyLib, paper?.id, paper?.durationMin]);
+
+  useEffect(() => {
+    if (!paper || !clockReady || result) return;
+    sessionStorage.setItem(`qingyan-exam:${paper.id}`, JSON.stringify({ answers, left }));
+  }, [answers, left, paper, result, clockReady]);
+
+  useEffect(() => {
+    if (!clockReady || result) return;
+    const timer = window.setInterval(() => setLeft((value) => (value > 0 ? value - 1 : 0)), 1000);
+    return () => window.clearInterval(timer);
+  }, [clockReady, result]);
 
   function submit() {
-    if (!paper || result || submitted.current) return;
-    submitted.current = true;
+    if (!paper || result || handed) return;
+    setHanded(true);
     const details = questions.map((question) => {
       const chosen = answers[question.id] ?? [];
       const correct = isCorrect(question, chosen);
@@ -86,7 +77,7 @@ export function ExamScreen({ paperId }: { paperId: string }) {
       paperName: paper.name,
       score,
       total: details.length,
-      durationSec: paper.durationMin * 60 - left,
+      durationSec: Math.max(0, paper.durationMin * 60 - left),
       at: new Date().toISOString(),
       details,
     };
@@ -96,6 +87,33 @@ export function ExamScreen({ paperId }: { paperId: string }) {
     sessionStorage.removeItem(`qingyan-exam:${paper.id}`);
     setResult(exam);
   }
+
+  useEffect(() => {
+    if (clockReady && left === 0 && paper && !result && !handed) submit();
+    // submit closes over the answers from this render; handed stops a second call.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [left, clockReady, handed, result]);
+
+  if (!readyLib || (paper && !clockReady)) {
+    return (
+      <div className="mx-auto w-full max-w-3xl">
+        <p className="text-muted">正在打开试卷。</p>
+      </div>
+    );
+  }
+
+  if (!paper) {
+    return (
+      <div className="mx-auto w-full max-w-3xl">
+        <h1 className="text-lg font-semibold">没有这份试卷</h1>
+        <Link to="/papers" className={cn(buttonVariants({ variant: "surface" }), "mt-4")}>
+          回试卷
+        </Link>
+      </div>
+    );
+  }
+
+  const current = questions[index];
 
   if (result) {
     return (

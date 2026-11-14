@@ -26,11 +26,18 @@ export function EditorScreen({ bankId, q }: { bankId: string; q: string }) {
   const [editing, setEditing] = useState<Question | "new" | null>(null);
   const [draftKey, setDraftKey] = useState(0);
   const opened = useRef("");
+  const metaDirty = useRef(false);
+  const seenBank = useRef(bank?.id);
 
   useEffect(() => {
     if (!bank) return;
+    if (seenBank.current !== bank.id) {
+      seenBank.current = bank.id;
+      metaDirty.current = false;
+    }
+    if (metaDirty.current) return;
     setMeta({ name: bank.name, subject: bank.subject, description: bank.description });
-  }, [bank?.id, bank?.name, bank?.subject, bank?.description]);
+  }, [bank]);
 
   useEffect(() => {
     if (opened.current === q) return;
@@ -87,7 +94,10 @@ export function EditorScreen({ bankId, q }: { bankId: string; q: string }) {
     }
     const results = apply([{ op: "bank.update", id: bankId, name, subject: meta.subject.trim(), description: meta.description.trim() }]);
     if (!results[0]?.ok) toast.error(results[0]?.message ?? "没保存");
-    else toast.success("题库信息已保存");
+    else {
+      metaDirty.current = false;
+      toast.success("题库信息已保存");
+    }
   }
 
   function addChapter() {
@@ -164,7 +174,7 @@ export function EditorScreen({ bankId, q }: { bankId: string; q: string }) {
 
   return (
     <div className="flex flex-col gap-3 desk:h-[calc(100dvh-2.5rem)] desk:min-h-0">
-      <header className="flex flex-col gap-3 pad:flex-row pad:items-end pad:justify-between">
+      <header className="order-1 flex flex-col gap-3 pad:flex-row pad:items-end pad:justify-between">
         <div>
           <Link to="/banks/$bankId" params={{ bankId }} className="text-sm text-muted">
             返回练习
@@ -176,7 +186,7 @@ export function EditorScreen({ bankId, q }: { bankId: string; q: string }) {
 
       <form
         className={cn(
-          "aero-float grid gap-3 p-4 pad:grid-cols-2 desk:grid-cols-[1fr_1fr_1.4fr_auto] desk:items-end",
+          "aero-float order-4 grid gap-3 p-4 pad:order-2 pad:grid-cols-2 desk:grid-cols-[1fr_1fr_1.4fr_auto] desk:items-end",
           editing ? "max-pad:hidden" : "",
         )}
         onSubmit={(event) => {
@@ -186,15 +196,15 @@ export function EditorScreen({ bankId, q }: { bankId: string; q: string }) {
       >
         <label className="flex flex-col gap-2 text-sm">
           名称
-          <input value={meta.name} onChange={(event) => setMeta((value) => ({ ...value, name: event.target.value }))} />
+          <input value={meta.name} onChange={(event) => { metaDirty.current = true; setMeta((value) => ({ ...value, name: event.target.value })); }} />
         </label>
         <label className="flex flex-col gap-2 text-sm">
           科目
-          <input value={meta.subject} onChange={(event) => setMeta((value) => ({ ...value, subject: event.target.value }))} />
+          <input value={meta.subject} onChange={(event) => { metaDirty.current = true; setMeta((value) => ({ ...value, subject: event.target.value })); }} />
         </label>
         <label className="flex flex-col gap-2 text-sm pad:col-span-2 desk:col-span-1">
           说明
-          <input value={meta.description} onChange={(event) => setMeta((value) => ({ ...value, description: event.target.value }))} />
+          <input value={meta.description} onChange={(event) => { metaDirty.current = true; setMeta((value) => ({ ...value, description: event.target.value })); }} />
         </label>
         <div className="pad:col-span-2 desk:col-span-1">
           <Button type="submit" variant="surface" className="w-full desk:w-auto">
@@ -203,7 +213,7 @@ export function EditorScreen({ bankId, q }: { bankId: string; q: string }) {
         </div>
       </form>
 
-      <div className={cn("aero-float p-3 desk:hidden", editing ? "max-pad:hidden" : "")}>
+      <div className={cn("aero-float order-3 p-3 desk:hidden", editing ? "max-pad:hidden" : "")}>
         <div className="chip-row">
           <Chip on={chapterId === ""} label={`全部 ${lib.questions.filter((question) => question.bankId === bankId).length}`} pick={() => setChapterId("")} />
           {chapters.map((chapter) => {
@@ -236,7 +246,7 @@ export function EditorScreen({ bankId, q }: { bankId: string; q: string }) {
         />
       </div>
 
-      <div className="grid min-h-0 flex-1 items-stretch gap-3 pad:grid-cols-2 desk:grid-cols-[12.5rem_minmax(0,0.92fr)_minmax(0,1.08fr)]">
+      <div className="order-2 grid min-h-0 flex-1 items-stretch gap-3 pad:order-4 pad:grid-cols-2 desk:grid-cols-[12.5rem_minmax(0,0.92fr)_minmax(0,1.08fr)]">
         <aside className="aero-float hidden min-h-0 flex-col overflow-hidden p-3 desk:flex">
           <h2 className="px-1 text-sm font-semibold">章节</h2>
           <form

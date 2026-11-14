@@ -107,7 +107,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-xs",
+                  "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-xs transition-[scale,background-color] duration-150 active:scale-[0.96]",
                   on ? "gloss gloss-blue" : "text-muted",
                 )}
               >
@@ -153,7 +153,7 @@ function NavLink({ item, on }: { item: Item; on: boolean }) {
     <Link
       to={item.to}
       className={cn(
-        "flex min-h-11 items-center gap-3 rounded-full px-3 text-sm",
+        "flex min-h-11 items-center gap-3 rounded-full px-3 text-sm transition-[scale,background-color] duration-150 active:scale-[0.96]",
         on ? "gloss gloss-blue" : "text-muted hover:bg-white/40",
       )}
     >
@@ -169,7 +169,7 @@ function RailLink({ item, on }: { item: Item; on: boolean }) {
     <Link
       to={item.to}
       className={cn(
-        "flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-2xl text-[11px] leading-none",
+        "flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-2xl text-[11px] leading-none transition-[scale,background-color] duration-150 active:scale-[0.96]",
         on ? "gloss gloss-blue" : "text-muted",
       )}
     >

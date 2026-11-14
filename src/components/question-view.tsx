@@ -92,7 +92,7 @@ export function QuestionView({
         </div>
         {onFavorite ? (
           <button type="button" className="canvas-icon" onClick={onFavorite} aria-label={favorite ? "取消收藏" : "收藏"}>
-            <img src="/cc/icons/star-medal.svg" alt="" className={cn(favorite ? "opacity-100" : "opacity-40")} />
+            <img src="/cc/icons/star-medal.svg" alt="" className={cn("transition-[opacity,scale] duration-200", favorite ? "scale-100 opacity-100" : "scale-90 opacity-40")} />
           </button>
         ) : null}
       </div>
@@ -113,7 +113,7 @@ export function QuestionView({
         <Legacy question={question} chosen={chosen} onChange={onChange} revealed={revealed} onImage={openImage} />
       )}
       {revealed ? (
-        <div className="mt-5 flex flex-col gap-2">
+        <div className="explain-stack mt-5 flex flex-col gap-2">
           {frame ? (
             explainBits.map((bit) => {
               const part = report?.parts.find((item) => item.target === bit.target);

@@ -1,30 +1,51 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useQingyan } from "@/lib/qingyan/store";
 import { relTime } from "@/lib/qingyan/stats";
+import { useLibraryReady } from "@/screens/frame";
 
 export function PapersScreen() {
+  const ready = useLibraryReady();
   const lib = useQingyan((state) => state.lib);
   const apply = useQingyan((state) => state.apply);
   const navigate = useNavigate();
   const [name, setName] = useState("随堂小卷");
-  const [bankId, setBankId] = useState(lib.banks[0]?.id ?? "");
+  const [bankId, setBankId] = useState("");
   const [from, setFrom] = useState<"bank" | "wrong">("bank");
-  const [count, setCount] = useState(10);
-  const [minutes, setMinutes] = useState(20);
+  const [count, setCount] = useState("10");
+  const [minutes, setMinutes] = useState("20");
+
+  useEffect(() => {
+    if (!ready) return;
+    setBankId((current) => (lib.banks.some((bank) => bank.id === current) ? current : (lib.banks[0]?.id ?? "")));
+  }, [ready, lib.banks]);
 
   function createPaper() {
     const bank = lib.banks.find((item) => item.id === bankId);
+    const countN = Number(count);
+    const minutesN = Number(minutes);
+    if (!bank) {
+      toast.error("先选题库");
+      return;
+    }
+    if (!Number.isFinite(countN) || countN < 1) {
+      toast.error("题量要是 1 到 100");
+      return;
+    }
+    if (!Number.isFinite(minutesN) || minutesN < 1) {
+      toast.error("时间要是 1 到 240 分钟");
+      return;
+    }
     const results = apply([
       {
         op: "paper.create",
         name,
-        bank: bank?.name ?? bankId,
+        bank: bank.name,
         from,
-        count,
-        durationMin: minutes,
+        count: countN,
+        durationMin: minutesN,
       },
     ]);
     const result = results[0];
@@ -72,11 +93,11 @@ export function PapersScreen() {
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-2 text-sm">
             题量
-            <input type="number" min={1} max={100} value={count} onChange={(event) => setCount(Number(event.target.value))} />
+            <input type="number" min={1} max={100} value={count} onChange={(event) => setCount(event.target.value)} />
           </label>
           <label className="flex flex-col gap-2 text-sm">
             分钟
-            <input type="number" min={1} max={240} value={minutes} onChange={(event) => setMinutes(Number(event.target.value))} />
+            <input type="number" min={1} max={240} value={minutes} onChange={(event) => setMinutes(event.target.value)} />
           </label>
         </div>
         <div className="md:col-span-2">

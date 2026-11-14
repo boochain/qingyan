@@ -10,3 +10,6 @@ artifacts
 *.log
 .env
 .env.*
+release
+desktop/node_modules
+

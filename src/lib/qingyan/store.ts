@@ -31,6 +31,20 @@ function uid(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-3)}`;
 }
 
+/** 5–200. Anything that is not a real number stays at the default, so a half-typed field cannot persist NaN. */
+export function clampDailyGoal(goal: number): number {
+  if (!Number.isFinite(goal)) return 20;
+  return Math.min(200, Math.max(5, Math.round(goal)));
+}
+
+/**
+ * Empty library that will not grow the frame demo back on the next load.
+ * `normalize` only inserts that bank when the flag is missing.
+ */
+export function clearedLibrary(): Library {
+  return { ...emptyLibrary(), flags: ["frame-demo"] };
+}
+
 function normalize(lib: Library): Library {
   const base = emptyLibrary();
   const flags = Array.isArray(lib.flags) ? [...lib.flags] : [];
@@ -38,7 +52,7 @@ function normalize(lib: Library): Library {
     ...base,
     ...lib,
     version: 1,
-    dailyGoal: lib.dailyGoal || 20,
+    dailyGoal: clampDailyGoal(Number(lib.dailyGoal)),
     resume: lib.resume ?? {},
     flags,
   };
@@ -70,7 +84,7 @@ export const useQingyan = create<QingyanState>()(
       },
       replace: (lib) => set({ lib: normalize(lib) }),
       resetDemo: () => set({ lib: seedLibrary() }),
-      clearAll: () => set({ lib: emptyLibrary() }),
+      clearAll: () => set({ lib: clearedLibrary() }),
       recordAnswer: (questionId, chosen, mode) => {
         const lib = get().lib;
         const question = lib.questions.find((item) => item.id === questionId);
@@ -124,8 +138,9 @@ export const useQingyan = create<QingyanState>()(
         set({ lib: { ...lib, resume } });
       },
       setDailyGoal: (goal) => {
+        if (!Number.isFinite(goal)) return;
         const lib = get().lib;
-        set({ lib: { ...lib, dailyGoal: Math.min(200, Math.max(5, Math.round(goal))) } });
+        set({ lib: { ...lib, dailyGoal: clampDailyGoal(goal) } });
       },
       setMastered: (questionId, mastered) => {
         get().apply([{ op: "wrong.master", questionId, mastered }]);

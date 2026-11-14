@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useQingyan } from "@/lib/qingyan/store";
 import { accuracyOf, streakDays, todayCount, unmasteredCount } from "@/lib/qingyan/stats";
@@ -17,6 +18,7 @@ export function DeskScreen() {
   const last = lib.attempts[lib.attempts.length - 1];
   const bank = lib.banks.find((item) => item.id === last?.bankId) ?? lib.banks[0];
   const mode: PracticeMode = last && last.mode !== "paper" && last.mode !== "favorite" ? last.mode : "order";
+  const [goalDraft, setGoalDraft] = useState<string | null>(null);
 
   return (
     <Screen title="书桌" lede="接着上次的题。建库和改题在题库里。">
@@ -71,9 +73,16 @@ export function DeskScreen() {
             type="number"
             min={5}
             max={200}
-            value={lib.dailyGoal}
+            inputMode="numeric"
+            value={goalDraft ?? (Number.isFinite(lib.dailyGoal) ? String(lib.dailyGoal) : "")}
             suppressHydrationWarning
-            onChange={(event) => setDailyGoal(Number(event.target.value))}
+            onFocus={() => setGoalDraft(Number.isFinite(lib.dailyGoal) ? String(lib.dailyGoal) : "")}
+            onChange={(event) => setGoalDraft(event.target.value)}
+            onBlur={() => {
+              const next = Number(goalDraft);
+              if (goalDraft !== null && goalDraft.trim() !== "" && Number.isFinite(next)) setDailyGoal(next);
+              setGoalDraft(null);
+            }}
           />
         </label>
       </section>
